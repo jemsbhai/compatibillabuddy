@@ -8,10 +8,10 @@ runner = CliRunner()
 
 
 def test_cli_no_args_shows_help():
-    """Running with no arguments should show help text."""
+    """Running with no arguments should show help text (exit code 2 = no args)."""
     result = runner.invoke(app)
-    assert result.exit_code == 0
-    assert "Usage" in result.stdout
+    assert result.exit_code in (0, 2)
+    assert "Usage" in result.output
 
 
 def test_cli_version_flag():
