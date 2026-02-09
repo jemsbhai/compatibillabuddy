@@ -3,7 +3,9 @@
 import typer
 
 from compatibillabuddy import __version__
+from compatibillabuddy.cli.agent import agent_command
 from compatibillabuddy.cli.doctor import doctor_command
+from compatibillabuddy.cli.repair import repair_command
 
 app = typer.Typer(
     name="compatibuddy",
@@ -33,3 +35,5 @@ def main(
 
 
 app.command(name="doctor")(doctor_command)
+app.command(name="agent")(agent_command)
+app.command(name="repair")(repair_command)
