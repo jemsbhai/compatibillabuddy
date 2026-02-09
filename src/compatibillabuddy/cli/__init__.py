@@ -3,7 +3,7 @@
 import typer
 
 from compatibillabuddy import __version__
-from compatibillabuddy.cli.doctor import doctor as doctor_cmd
+from compatibillabuddy.cli.doctor import doctor_command
 
 app = typer.Typer(
     name="compatibuddy",
@@ -32,4 +32,4 @@ def main(
     """Hardware-aware dependency compatibility for Python ML stacks."""
 
 
-app.command()(doctor_cmd)
+app.command(name="doctor")(doctor_command)

@@ -13,7 +13,7 @@ from compatibillabuddy.engine.doctor import diagnose
 from compatibillabuddy.engine.report import format_report_console, format_report_json
 
 
-def doctor(
+def doctor_command(
     format: str = typer.Option(  # noqa: B008
         "console",
         "--format",
