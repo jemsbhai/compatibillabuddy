@@ -106,11 +106,15 @@ def tool_search_rules(package_name: str) -> dict:
 
     matching = []
     for rule in rules:
-        if rule.when.package_installed and rule.when.package_installed.lower() == name_lower:
-            matching.append(rule.model_dump())
-            continue
-        if name_lower in rule.description.lower():
-            matching.append(rule.model_dump())
+        try:
+            if rule.when.package_installed and rule.when.package_installed.lower() == name_lower:
+                matching.append(rule.model_dump(mode="json"))
+                continue
+            if name_lower in rule.description.lower():
+                matching.append(rule.model_dump(mode="json"))
+        except Exception:
+            # Serialization edge case — include minimal info
+            matching.append({"id": rule.id, "description": rule.description})
 
     return {"package": package_name, "rules": matching}
 

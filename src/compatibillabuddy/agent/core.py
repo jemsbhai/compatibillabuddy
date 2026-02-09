@@ -170,6 +170,20 @@ class AgentSession:
         if self._on_event is not None:
             self._on_event(event)
 
+    @staticmethod
+    def _extract_part(response: Any) -> Any | None:
+        """Safely extract the first part from a Gemini response.
+
+        Returns None if the response has no candidates, no content,
+        or no parts (e.g. MALFORMED_FUNCTION_CALL).
+        """
+        if not response.candidates:
+            return None
+        content = response.candidates[0].content
+        if content is None or content.parts is None or len(content.parts) == 0:
+            return None
+        return content.parts[0]
+
     def _send_with_retry(self, message: str) -> Any:
         """Send a message with exponential backoff on transient errors.
 
@@ -225,7 +239,9 @@ class AgentSession:
         response = self._send_with_retry(user_message)
 
         for _ in range(_MAX_TOOL_ROUNDS):
-            part = response.candidates[0].content.parts[0]
+            part = self._extract_part(response)
+            if part is None:
+                return "(Agent received an empty or malformed response — please retry)"
 
             if part.function_call is None:
                 return part.text or ""
@@ -246,7 +262,9 @@ class AgentSession:
 
             response = self._send_with_retry(json.dumps(tool_result, default=str))
 
-        part = response.candidates[0].content.parts[0]
+        part = self._extract_part(response)
+        if part is None:
+            return "(Agent reached maximum tool call rounds)"
         return part.text or "(Agent reached maximum tool call rounds)"
 
     def auto_repair(
@@ -288,7 +306,13 @@ class AgentSession:
         response = self._send_with_retry(prompt)
 
         for _ in range(_MAX_TOOL_ROUNDS):
-            part = response.candidates[0].content.parts[0]
+            part = self._extract_part(response)
+            if part is None:
+                return RepairResult(
+                    summary="Agent received an empty or malformed response — please retry.",
+                    repair_log=repair_log,
+                    success=False,
+                )
 
             if part.function_call is None:
                 summary = part.text or ""
@@ -320,8 +344,12 @@ class AgentSession:
             response = self._send_with_retry(json.dumps(tool_result, default=str))
 
         # Exhausted max rounds
-        part = response.candidates[0].content.parts[0]
-        summary = part.text or "(Agent reached maximum tool call rounds)"
+        part = self._extract_part(response)
+        summary = (
+            part.text
+            if part is not None and part.text
+            else "(Agent reached maximum tool call rounds)"
+        )
         return RepairResult(
             summary=summary,
             repair_log=repair_log,
