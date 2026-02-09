@@ -1,7 +1,5 @@
 """Tests for core data models — written BEFORE implementation (TDD)."""
 
-import json
-
 import pytest
 from pydantic import ValidationError
 
@@ -301,11 +299,15 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(hardware=hw, environment=env)
 
@@ -324,19 +326,28 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         issues = [
-            CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
-                        description="CUDA too old"),
-            CompatIssue(severity=Severity.WARNING, category="coinstall",
-                        description="Torch and TF co-installed"),
-            CompatIssue(severity=Severity.INFO, category="deprecation",
-                        description="API deprecated"),
+            CompatIssue(
+                severity=Severity.ERROR, category="cuda_mismatch", description="CUDA too old"
+            ),
+            CompatIssue(
+                severity=Severity.WARNING,
+                category="coinstall",
+                description="Torch and TF co-installed",
+            ),
+            CompatIssue(
+                severity=Severity.INFO, category="deprecation", description="API deprecated"
+            ),
         ]
         result = DiagnosisResult(hardware=hw, environment=env, issues=issues)
 
@@ -355,19 +366,26 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(
-            hardware=hw, environment=env,
+            hardware=hw,
+            environment=env,
             issues=[
-                CompatIssue(severity=Severity.WARNING, category="coinstall",
-                            description="Potential conflict"),
-                CompatIssue(severity=Severity.INFO, category="deprecation",
-                            description="Old API"),
+                CompatIssue(
+                    severity=Severity.WARNING,
+                    category="coinstall",
+                    description="Potential conflict",
+                ),
+                CompatIssue(severity=Severity.INFO, category="deprecation", description="Old API"),
             ],
         )
 
@@ -385,17 +403,23 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(
-            hardware=hw, environment=env,
+            hardware=hw,
+            environment=env,
             issues=[
-                CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
-                            description="CUDA broken"),
+                CompatIssue(
+                    severity=Severity.ERROR, category="cuda_mismatch", description="CUDA broken"
+                ),
             ],
         )
 
@@ -411,11 +435,15 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(hardware=hw, environment=env)
 
@@ -433,14 +461,19 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(
-            hardware=hw, environment=env,
+            hardware=hw,
+            environment=env,
             hardware_probe_seconds=1.23,
             environment_inspect_seconds=4.56,
             rule_evaluation_seconds=0.01,
@@ -464,19 +497,28 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
             packages=[InstalledPackage(name="torch", version="2.4.0")],
         )
         original = DiagnosisResult(
-            hardware=hw, environment=env,
+            hardware=hw,
+            environment=env,
             issues=[
-                CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
-                            description="CUDA too old", affected_packages=["torch"],
-                            fix_suggestion="Upgrade CUDA"),
+                CompatIssue(
+                    severity=Severity.ERROR,
+                    category="cuda_mismatch",
+                    description="CUDA too old",
+                    affected_packages=["torch"],
+                    fix_suggestion="Upgrade CUDA",
+                ),
             ],
             hardware_probe_seconds=1.0,
             environment_inspect_seconds=2.0,
@@ -497,11 +539,15 @@ class TestDiagnosisResult:
         )
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
         )
         result = DiagnosisResult(hardware=hw, environment=env)
         assert result.issues == []

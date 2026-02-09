@@ -11,7 +11,6 @@ import platform
 import re
 import subprocess
 import sys
-from typing import Optional
 
 from compatibillabuddy.engine.models import GpuInfo, GpuVendor, HardwareProfile
 
@@ -125,7 +124,7 @@ def _detect_nvidia_gpus() -> list[GpuInfo]:
     return gpus
 
 
-def _run_nvidia_smi_query() -> Optional[str]:
+def _run_nvidia_smi_query() -> str | None:
     """Run nvidia-smi --query-gpu and return CSV output, or None on failure."""
     try:
         result = subprocess.run(
@@ -145,7 +144,7 @@ def _run_nvidia_smi_query() -> Optional[str]:
         return None
 
 
-def _get_cuda_version_from_nvidia_smi() -> Optional[str]:
+def _get_cuda_version_from_nvidia_smi() -> str | None:
     """Get CUDA version from nvidia-smi header output."""
     try:
         result = subprocess.run(
@@ -161,7 +160,7 @@ def _get_cuda_version_from_nvidia_smi() -> Optional[str]:
         return None
 
 
-def _parse_cuda_version(nvidia_smi_output: str) -> Optional[str]:
+def _parse_cuda_version(nvidia_smi_output: str) -> str | None:
     """Extract CUDA version from nvidia-smi header output.
 
     Looks for 'CUDA Version: XX.Y' in the output.

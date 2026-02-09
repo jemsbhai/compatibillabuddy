@@ -13,10 +13,8 @@ Comprehensive test suite covering:
 import textwrap
 
 import pytest
-from packaging.version import Version
 
 from compatibillabuddy.engine.models import (
-    CompatIssue,
     EnvironmentInventory,
     GpuInfo,
     GpuVendor,
@@ -24,7 +22,6 @@ from compatibillabuddy.engine.models import (
     InstalledPackage,
     Severity,
 )
-
 
 # ===========================================================================
 # Fixtures: hardware profiles
@@ -301,8 +298,8 @@ SAMPLE_RULEPACK_TOML = textwrap.dedent("""\
     id = "torch-cuda-mismatch"
     severity = "error"
     category = "cuda_mismatch"
-    description = "PyTorch {torch_version} requires CUDA >= 12.1, but system has CUDA {cuda_version}"
-    fix = "Install PyTorch for CUDA 11.8: pip install torch --index-url https://download.pytorch.org/whl/cu118"
+    description = "PyTorch {torch_version} needs CUDA >=12.1, system has {cuda_version}"
+    fix = "pip install torch --index-url https://download.pytorch.org/whl/cu118"
 
     [rules.when]
     package_installed = "torch"
@@ -948,7 +945,9 @@ class TestBundledRulepacks:
 
         rules = load_bundled_rulepacks()
         ids = [r.id for r in rules]
-        assert len(ids) == len(set(ids)), f"Duplicate rule IDs: {[x for x in ids if ids.count(x) > 1]}"
+        assert len(ids) == len(set(ids)), (
+            f"Duplicate rule IDs: {[x for x in ids if ids.count(x) > 1]}"
+        )
 
     def test_all_bundled_rules_have_descriptions(self):
         from compatibillabuddy.kb.engine import load_bundled_rulepacks
@@ -1006,10 +1005,7 @@ class TestBundledMlCoreRules:
         issues = evaluate_rules(self.rules, env, hw)
         # Match by checking the description contains content from the rule
         rule = next(r for r in self.rules if r.id == rule_id)
-        return any(
-            i.category == rule.category and i.severity == rule.severity
-            for i in issues
-        )
+        return any(i.category == rule.category and i.severity == rule.severity for i in issues)
 
     # --- torch CUDA rules ---
 
@@ -1052,7 +1048,9 @@ class TestBundledMlCoreRules:
         issues = self._eval(env, hw_nvidia_old_driver)
         # hw_nvidia_old_driver has CUDA 11.8, which satisfies >=11.8
         # The rule "torch-2.1-needs-cuda-11.8" checks cuda < 11.8
-        matching = [i for i in issues if "torch" in i.affected_packages and i.category == "cuda_mismatch"]
+        matching = [
+            i for i in issues if "torch" in i.affected_packages and i.category == "cuda_mismatch"
+        ]
         assert len(matching) == 0
 
     # --- TensorFlow CUDA rules ---
@@ -1062,13 +1060,21 @@ class TestBundledMlCoreRules:
 
     def test_tf216_cuda_new_does_not_fire(self, hw_nvidia_new_driver, env_tf216):
         issues = self._eval(env_tf216, hw_nvidia_new_driver)
-        tf_cuda = [i for i in issues if "tensorflow" in i.affected_packages and i.category == "cuda_mismatch"]
+        tf_cuda = [
+            i
+            for i in issues
+            if "tensorflow" in i.affected_packages and i.category == "cuda_mismatch"
+        ]
         assert len(tf_cuda) == 0
 
     def test_tf215_does_not_fire(self, hw_nvidia_old_driver, env_tf215):
         """TensorFlow < 2.16 should not trigger the 12.3 CUDA rule."""
         issues = self._eval(env_tf215, hw_nvidia_old_driver)
-        tf_cuda = [i for i in issues if "tensorflow" in i.affected_packages and i.category == "cuda_mismatch"]
+        tf_cuda = [
+            i
+            for i in issues
+            if "tensorflow" in i.affected_packages and i.category == "cuda_mismatch"
+        ]
         assert len(tf_cuda) == 0
 
     # --- NumPy ABI rules ---
@@ -1086,7 +1092,9 @@ class TestBundledMlCoreRules:
 
     def test_numpy2_new_sklearn_does_not_fire(self, hw_cpu_only, env_numpy2_new_sklearn):
         issues = self._eval(env_numpy2_new_sklearn, hw_cpu_only)
-        abi = [i for i in issues if i.category == "numpy_abi" and "scikit-learn" in i.affected_packages]
+        abi = [
+            i for i in issues if i.category == "numpy_abi" and "scikit-learn" in i.affected_packages
+        ]
         assert len(abi) == 0
 
     def test_numpy2_old_scipy_fires(self, hw_cpu_only, env_numpy2_old_scipy):

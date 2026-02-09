@@ -10,7 +10,6 @@ to avoid subprocess calls. When arguments are None, calls the real subsystems.
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from compatibillabuddy.engine.models import (
     DiagnosisResult,
@@ -23,9 +22,9 @@ from compatibillabuddy.kb.engine import Rule, evaluate_rules, load_bundled_rulep
 
 
 def diagnose(
-    hardware: Optional[HardwareProfile] = None,
-    env: Optional[EnvironmentInventory] = None,
-    rules: Optional[list[Rule]] = None,
+    hardware: HardwareProfile | None = None,
+    env: EnvironmentInventory | None = None,
+    rules: list[Rule] | None = None,
 ) -> DiagnosisResult:
     """Run a full compatibility diagnosis.
 

@@ -20,9 +20,7 @@ from compatibillabuddy.engine.models import (
     GpuVendor,
     HardwareProfile,
     InstalledPackage,
-    Severity,
 )
-
 
 # ---------------------------------------------------------------------------
 # First: prove the PEP 440 behavior that creates the gap
@@ -86,7 +84,7 @@ PRERELEASE_RULEPACK = textwrap.dedent("""\
     id = "torch-cuda-needs-12.1"
     severity = "error"
     category = "cuda_mismatch"
-    description = "PyTorch {torch_version} requires CUDA >= 12.1, but system has CUDA {cuda_version}"
+    description = "PyTorch {torch_version} needs CUDA >=12.1, system has {cuda_version}"
     fix = "Install compatible PyTorch"
 
     [rules.when]

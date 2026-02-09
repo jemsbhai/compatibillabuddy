@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional
 
 try:
     import tomllib
@@ -27,7 +26,6 @@ from compatibillabuddy.engine.models import (
     Severity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Rule models
 # ---------------------------------------------------------------------------
@@ -36,10 +34,10 @@ from compatibillabuddy.engine.models import (
 class RuleCondition(BaseModel):
     """Conditions that must ALL be true for a rule to fire."""
 
-    package_installed: Optional[str] = None
+    package_installed: str | None = None
     package_version: dict[str, str] = Field(default_factory=dict)
-    gpu_vendor: Optional[str] = None
-    cuda_version: Optional[str] = None
+    gpu_vendor: str | None = None
+    cuda_version: str | None = None
 
 
 class Rule(BaseModel):
@@ -49,7 +47,7 @@ class Rule(BaseModel):
     severity: Severity
     category: str
     description: str
-    fix: Optional[str] = None
+    fix: str | None = None
     when: RuleCondition = Field(default_factory=RuleCondition)
 
 
@@ -182,9 +180,8 @@ def _rule_matches(
     cond = rule.when
 
     # Check: specific package must be installed
-    if cond.package_installed is not None:
-        if env.get_package(cond.package_installed) is None:
-            return False
+    if cond.package_installed is not None and env.get_package(cond.package_installed) is None:
+        return False
 
     # Check: package version constraints
     if cond.package_version:
@@ -198,11 +195,14 @@ def _rule_matches(
     # Check: GPU vendor
     if cond.gpu_vendor is not None:
         vendor = cond.gpu_vendor.lower()
-        if vendor == "nvidia" and not hardware.has_nvidia_gpu:
-            return False
-        elif vendor == "amd" and not hardware.has_amd_gpu:
-            return False
-        elif vendor == "apple" and not hardware.has_apple_gpu:
+        if (
+            vendor == "nvidia"
+            and not hardware.has_nvidia_gpu
+            or vendor == "amd"
+            and not hardware.has_amd_gpu
+            or vendor == "apple"
+            and not hardware.has_apple_gpu
+        ):
             return False
 
     # Check: CUDA version constraint
@@ -258,7 +258,7 @@ def _version_matches(installed_version: str, specifier_str: str) -> bool:
         return False
 
 
-def _get_system_cuda_version(hardware: HardwareProfile) -> Optional[str]:
+def _get_system_cuda_version(hardware: HardwareProfile) -> str | None:
     """Extract the CUDA version from the hardware profile.
 
     Returns the CUDA version from the first NVIDIA GPU, or None.

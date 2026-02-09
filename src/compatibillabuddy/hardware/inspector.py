@@ -10,12 +10,11 @@ import json
 import os
 import subprocess
 import sys
-from typing import Optional
 
 from compatibillabuddy.engine.models import EnvironmentInventory, InstalledPackage
 
 
-def inspect_environment(python_executable: Optional[str] = None) -> EnvironmentInventory:
+def inspect_environment(python_executable: str | None = None) -> EnvironmentInventory:
     """Inspect the current (or specified) Python environment.
 
     Calls `pip inspect` and parses the JSON output.
@@ -117,13 +116,11 @@ def _run_pip_inspect(python_executable: str) -> str:
         raise RuntimeError(
             f"pip not found at '{python_executable}'. "
             "Ensure pip is installed in the target environment."
-        )
+        ) from None
     except subprocess.TimeoutExpired:
-        raise RuntimeError("pip inspect timed out after 60 seconds.")
+        raise RuntimeError("pip inspect timed out after 60 seconds.") from None
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"pip inspect failed (exit code {result.returncode}): {result.stderr}"
-        )
+        raise RuntimeError(f"pip inspect failed (exit code {result.returncode}): {result.stderr}")
 
     return result.stdout

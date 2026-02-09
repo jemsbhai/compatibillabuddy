@@ -1,7 +1,5 @@
 """CLI entry point for compatibillabuddy."""
 
-from typing import Optional
-
 import typer
 
 from compatibillabuddy import __version__
@@ -21,7 +19,7 @@ def version_callback(value: bool):
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-V",

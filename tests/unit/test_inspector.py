@@ -9,8 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from compatibillabuddy.engine.models import EnvironmentInventory, InstalledPackage
-
+from compatibillabuddy.engine.models import EnvironmentInventory
 
 # ---------------------------------------------------------------------------
 # Fixtures: canned pip inspect output
@@ -85,7 +84,10 @@ def pip_inspect_output_ml_stack():
                             "nvidia-cublas-cu12==12.1.3.1",
                         ],
                     },
-                    "metadata_location": "/home/user/.venv/lib/python3.12/site-packages/torch-2.4.0.dist-info",
+                    "metadata_location": (
+                        "/home/user/.venv/lib/python3.12/"
+                        "site-packages/torch-2.4.0.dist-info"
+                    ),
                     "installer": "pip",
                     "requested": True,
                 },
@@ -95,7 +97,10 @@ def pip_inspect_output_ml_stack():
                         "name": "numpy",
                         "version": "2.0.0",
                     },
-                    "metadata_location": "/home/user/.venv/lib/python3.12/site-packages/numpy-2.0.0.dist-info",
+                    "metadata_location": (
+                        "/home/user/.venv/lib/python3.12/"
+                        "site-packages/numpy-2.0.0.dist-info"
+                    ),
                     "installer": "pip",
                     "requested": True,
                 },
@@ -111,7 +116,10 @@ def pip_inspect_output_ml_stack():
                             "threadpoolctl>=3.1.0",
                         ],
                     },
-                    "metadata_location": "/home/user/.venv/lib/python3.12/site-packages/scikit_learn-1.4.0.dist-info",
+                    "metadata_location": (
+                        "/home/user/.venv/lib/python3.12/"
+                        "site-packages/scikit_learn-1.4.0.dist-info"
+                    ),
                     "installer": "pip",
                     "requested": True,
                 },
@@ -228,7 +236,7 @@ class TestInspectEnvironment:
         result.stdout = pip_inspect_output_minimal
 
         with patch("subprocess.run", return_value=result) as mock_run:
-            inv = inspect_environment()
+            inspect_environment()
 
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -251,9 +259,11 @@ class TestInspectEnvironment:
     def test_inspect_pip_not_found(self):
         from compatibillabuddy.hardware.inspector import inspect_environment
 
-        with patch("subprocess.run", side_effect=FileNotFoundError):
-            with pytest.raises(RuntimeError, match="pip"):
-                inspect_environment()
+        with (
+            patch("subprocess.run", side_effect=FileNotFoundError),
+            pytest.raises(RuntimeError, match="pip"),
+        ):
+            inspect_environment()
 
     def test_inspect_pip_fails(self):
         from compatibillabuddy.hardware.inspector import inspect_environment
@@ -262,9 +272,11 @@ class TestInspectEnvironment:
         result.returncode = 1
         result.stderr = "some error"
 
-        with patch("subprocess.run", return_value=result):
-            with pytest.raises(RuntimeError, match="pip inspect"):
-                inspect_environment()
+        with (
+            patch("subprocess.run", return_value=result),
+            pytest.raises(RuntimeError, match="pip inspect"),
+        ):
+            inspect_environment()
 
     def test_inspect_custom_python(self, pip_inspect_output_minimal):
         """Should allow specifying a custom Python executable."""
@@ -275,7 +287,7 @@ class TestInspectEnvironment:
         result.stdout = pip_inspect_output_minimal
 
         with patch("subprocess.run", return_value=result) as mock_run:
-            inv = inspect_environment(python_executable="/path/to/venv/bin/python")
+            inspect_environment(python_executable="/path/to/venv/bin/python")
 
         cmd = mock_run.call_args[0][0]
         assert cmd[0] == "/path/to/venv/bin/python"

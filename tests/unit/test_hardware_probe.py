@@ -5,14 +5,12 @@ One integration test (marked slow) runs the real probe.
 """
 
 import json
-import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from compatibillabuddy.engine.models import GpuVendor, HardwareProfile
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: canned system responses
@@ -28,10 +26,7 @@ def nvidia_smi_csv_single():
 @pytest.fixture
 def nvidia_smi_csv_multi():
     """nvidia-smi output for dual A100s."""
-    return (
-        "NVIDIA A100-SXM4-80GB, 535.129.03, 81920\n"
-        "NVIDIA A100-SXM4-80GB, 535.129.03, 81920\n"
-    )
+    return "NVIDIA A100-SXM4-80GB, 535.129.03, 81920\nNVIDIA A100-SXM4-80GB, 535.129.03, 81920\n"
 
 
 @pytest.fixture

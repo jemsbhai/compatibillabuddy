@@ -11,10 +11,8 @@ These models flow through the entire system:
 from __future__ import annotations
 
 import enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -50,14 +48,14 @@ class GpuInfo(BaseModel):
     driver_version: str
 
     # NVIDIA-specific
-    cuda_version: Optional[str] = None
-    compute_capability: Optional[str] = None
+    cuda_version: str | None = None
+    compute_capability: str | None = None
 
     # AMD-specific
-    rocm_version: Optional[str] = None
+    rocm_version: str | None = None
 
     # Shared
-    vram_mb: Optional[int] = None
+    vram_mb: int | None = None
 
 
 class HardwareProfile(BaseModel):
@@ -101,8 +99,8 @@ class InstalledPackage(BaseModel):
     name: str
     version: str
     requires: list[str] = Field(default_factory=list)
-    location: Optional[str] = None
-    installer: Optional[str] = None
+    location: str | None = None
+    installer: str | None = None
 
 
 class EnvironmentInventory(BaseModel):
@@ -115,7 +113,7 @@ class EnvironmentInventory(BaseModel):
     python_executable: str
     packages: list[InstalledPackage] = Field(default_factory=list)
 
-    def get_package(self, name: str) -> Optional[InstalledPackage]:
+    def get_package(self, name: str) -> InstalledPackage | None:
         """Look up a package by name (case-insensitive).
 
         Returns None if the package is not installed.
@@ -142,7 +140,7 @@ class DiagnosisResult(BaseModel):
 
     hardware: HardwareProfile
     environment: EnvironmentInventory
-    issues: list["CompatIssue"] = Field(default_factory=list)
+    issues: list[CompatIssue] = Field(default_factory=list)
 
     # Timing metadata (seconds)
     hardware_probe_seconds: float = 0.0
@@ -177,7 +175,7 @@ class CompatIssue(BaseModel):
     category: str = Field(..., min_length=1)
     description: str
     affected_packages: list[str] = Field(default_factory=list)
-    fix_suggestion: Optional[str] = None
+    fix_suggestion: str | None = None
 
     @field_validator("category")
     @classmethod

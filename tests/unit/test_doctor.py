@@ -12,7 +12,6 @@ Covers:
 import pytest
 
 from compatibillabuddy.engine.models import (
-    CompatIssue,
     DiagnosisResult,
     EnvironmentInventory,
     GpuInfo,
@@ -21,7 +20,6 @@ from compatibillabuddy.engine.models import (
     InstalledPackage,
     Severity,
 )
-
 
 # ===========================================================================
 # Fixtures
@@ -232,11 +230,15 @@ class TestDiagnoseSorting:
         ]
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
             packages=[InstalledPackage(name="torch", version="2.4.0")],
         )
 
@@ -270,11 +272,15 @@ class TestDiagnoseSorting:
         ]
 
         hw = HardwareProfile(
-            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
-            cpu_name="Intel Xeon", python_version="3.12.0",
+            os_name="Linux",
+            os_version="6.1.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
         )
         env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/usr/bin/python3",
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
             packages=[InstalledPackage(name="torch", version="2.4.0")],
         )
 
@@ -308,7 +314,9 @@ class TestDiagnoseTiming:
 
         assert result.rule_evaluation_seconds >= 0.0
 
-    def test_injected_deps_skip_probe_and_inspect_timing(self, hw_cpu_only, env_clean, bundled_rules):
+    def test_injected_deps_skip_probe_and_inspect_timing(
+        self, hw_cpu_only, env_clean, bundled_rules
+    ):
         """When hardware/env are injected, their timing should be 0.0."""
         from compatibillabuddy.engine.doctor import diagnose
 
@@ -333,8 +341,11 @@ class TestDiagnoseDefaults:
         from compatibillabuddy.engine.doctor import diagnose
 
         mock_hw = HardwareProfile(
-            os_name="MockOS", os_version="1.0", cpu_arch="x86_64",
-            cpu_name="Mock CPU", python_version="3.12.0",
+            os_name="MockOS",
+            os_version="1.0",
+            cpu_arch="x86_64",
+            cpu_name="Mock CPU",
+            python_version="3.12.0",
         )
 
         with patch(
@@ -353,7 +364,8 @@ class TestDiagnoseDefaults:
         from compatibillabuddy.engine.doctor import diagnose
 
         mock_env = EnvironmentInventory(
-            python_version="3.12.0", python_executable="/mock/python",
+            python_version="3.12.0",
+            python_executable="/mock/python",
         )
 
         with patch(
@@ -394,12 +406,14 @@ class TestDiagnoseErrors:
 
         from compatibillabuddy.engine.doctor import diagnose
 
-        with patch(
-            "compatibillabuddy.engine.doctor.probe_hardware",
-            side_effect=RuntimeError("nvidia-smi exploded"),
+        with (
+            patch(
+                "compatibillabuddy.engine.doctor.probe_hardware",
+                side_effect=RuntimeError("nvidia-smi exploded"),
+            ),
+            pytest.raises(RuntimeError, match="nvidia-smi exploded"),
         ):
-            with pytest.raises(RuntimeError, match="nvidia-smi exploded"):
-                diagnose(hardware=None, env=env_clean, rules=bundled_rules)
+            diagnose(hardware=None, env=env_clean, rules=bundled_rules)
 
     def test_inspector_failure_propagates(self, hw_cpu_only, bundled_rules):
         """If inspect_environment() raises, diagnose() should propagate the error."""
@@ -407,9 +421,11 @@ class TestDiagnoseErrors:
 
         from compatibillabuddy.engine.doctor import diagnose
 
-        with patch(
-            "compatibillabuddy.engine.doctor.inspect_environment",
-            side_effect=RuntimeError("pip not found"),
+        with (
+            patch(
+                "compatibillabuddy.engine.doctor.inspect_environment",
+                side_effect=RuntimeError("pip not found"),
+            ),
+            pytest.raises(RuntimeError, match="pip not found"),
         ):
-            with pytest.raises(RuntimeError, match="pip not found"):
-                diagnose(hardware=hw_cpu_only, env=None, rules=bundled_rules)
+            diagnose(hardware=hw_cpu_only, env=None, rules=bundled_rules)
