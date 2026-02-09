@@ -132,6 +132,40 @@ class EnvironmentInventory(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class DiagnosisResult(BaseModel):
+    """Complete result of a compatibility diagnosis run.
+
+    Bundles hardware profile, environment inventory, discovered issues,
+    and timing metadata. Produced by the doctor module. Consumed by
+    the CLI reporter, JSON export, and AI agent context.
+    """
+
+    hardware: HardwareProfile
+    environment: EnvironmentInventory
+    issues: list["CompatIssue"] = Field(default_factory=list)
+
+    # Timing metadata (seconds)
+    hardware_probe_seconds: float = 0.0
+    environment_inspect_seconds: float = 0.0
+    rule_evaluation_seconds: float = 0.0
+    total_seconds: float = 0.0
+
+    @property
+    def has_errors(self) -> bool:
+        """True if any issues have ERROR severity."""
+        return any(i.severity == Severity.ERROR for i in self.issues)
+
+    @property
+    def has_warnings(self) -> bool:
+        """True if any issues have WARNING severity."""
+        return any(i.severity == Severity.WARNING for i in self.issues)
+
+    @property
+    def issue_count(self) -> int:
+        """Total number of diagnosed issues."""
+        return len(self.issues)
+
+
 class CompatIssue(BaseModel):
     """A single diagnosed compatibility issue.
 

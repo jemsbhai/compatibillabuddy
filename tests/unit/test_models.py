@@ -287,3 +287,221 @@ class TestCompatIssue:
                 description="Something broke",
                 affected_packages=["torch"],
             )
+
+
+class TestDiagnosisResult:
+    """Tests for DiagnosisResult model."""
+
+    def test_create_clean_result(self):
+        """A diagnosis with no issues should be valid."""
+        from compatibillabuddy.engine.models import (
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(hardware=hw, environment=env)
+
+        assert result.issue_count == 0
+        assert result.has_errors is False
+        assert result.has_warnings is False
+
+    def test_create_result_with_issues(self):
+        """A diagnosis with mixed severity issues."""
+        from compatibillabuddy.engine.models import (
+            CompatIssue,
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+            Severity,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        issues = [
+            CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
+                        description="CUDA too old"),
+            CompatIssue(severity=Severity.WARNING, category="coinstall",
+                        description="Torch and TF co-installed"),
+            CompatIssue(severity=Severity.INFO, category="deprecation",
+                        description="API deprecated"),
+        ]
+        result = DiagnosisResult(hardware=hw, environment=env, issues=issues)
+
+        assert result.issue_count == 3
+        assert result.has_errors is True
+        assert result.has_warnings is True
+
+    def test_has_errors_false_when_only_warnings(self):
+        """has_errors should be False if there are only warnings and info."""
+        from compatibillabuddy.engine.models import (
+            CompatIssue,
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+            Severity,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(
+            hardware=hw, environment=env,
+            issues=[
+                CompatIssue(severity=Severity.WARNING, category="coinstall",
+                            description="Potential conflict"),
+                CompatIssue(severity=Severity.INFO, category="deprecation",
+                            description="Old API"),
+            ],
+        )
+
+        assert result.has_errors is False
+        assert result.has_warnings is True
+
+    def test_has_warnings_false_when_only_errors(self):
+        """has_warnings should be False if there are only errors."""
+        from compatibillabuddy.engine.models import (
+            CompatIssue,
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+            Severity,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(
+            hardware=hw, environment=env,
+            issues=[
+                CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
+                            description="CUDA broken"),
+            ],
+        )
+
+        assert result.has_errors is True
+        assert result.has_warnings is False
+
+    def test_timing_defaults_to_zero(self):
+        """All timing fields should default to 0.0."""
+        from compatibillabuddy.engine.models import (
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(hardware=hw, environment=env)
+
+        assert result.hardware_probe_seconds == 0.0
+        assert result.environment_inspect_seconds == 0.0
+        assert result.rule_evaluation_seconds == 0.0
+        assert result.total_seconds == 0.0
+
+    def test_timing_stores_values(self):
+        """Timing fields should store provided values."""
+        from compatibillabuddy.engine.models import (
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(
+            hardware=hw, environment=env,
+            hardware_probe_seconds=1.23,
+            environment_inspect_seconds=4.56,
+            rule_evaluation_seconds=0.01,
+            total_seconds=5.80,
+        )
+
+        assert result.hardware_probe_seconds == 1.23
+        assert result.environment_inspect_seconds == 4.56
+        assert result.rule_evaluation_seconds == 0.01
+        assert result.total_seconds == 5.80
+
+    def test_serialization_roundtrip(self):
+        """DiagnosisResult should serialize to JSON and back without data loss."""
+        from compatibillabuddy.engine.models import (
+            CompatIssue,
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+            InstalledPackage,
+            Severity,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+            packages=[InstalledPackage(name="torch", version="2.4.0")],
+        )
+        original = DiagnosisResult(
+            hardware=hw, environment=env,
+            issues=[
+                CompatIssue(severity=Severity.ERROR, category="cuda_mismatch",
+                            description="CUDA too old", affected_packages=["torch"],
+                            fix_suggestion="Upgrade CUDA"),
+            ],
+            hardware_probe_seconds=1.0,
+            environment_inspect_seconds=2.0,
+            rule_evaluation_seconds=0.5,
+            total_seconds=3.5,
+        )
+
+        json_str = original.model_dump_json()
+        restored = DiagnosisResult.model_validate_json(json_str)
+        assert restored == original
+
+    def test_issues_defaults_to_empty(self):
+        """Issues list should default to empty."""
+        from compatibillabuddy.engine.models import (
+            DiagnosisResult,
+            EnvironmentInventory,
+            HardwareProfile,
+        )
+
+        hw = HardwareProfile(
+            os_name="Linux", os_version="6.1.0", cpu_arch="x86_64",
+            cpu_name="Intel Xeon", python_version="3.12.0",
+        )
+        env = EnvironmentInventory(
+            python_version="3.12.0", python_executable="/usr/bin/python3",
+        )
+        result = DiagnosisResult(hardware=hw, environment=env)
+        assert result.issues == []
