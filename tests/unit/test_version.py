@@ -21,4 +21,4 @@ def test_version_matches_pyproject():
     """Version in __init__ should match pyproject.toml."""
     from compatibillabuddy import __version__
 
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.2.0"
