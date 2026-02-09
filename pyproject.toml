@@ -76,6 +76,9 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+markers = [
+  "integration: runs against real system (may need GPU, network, etc.)",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/compatibillabuddy"]
