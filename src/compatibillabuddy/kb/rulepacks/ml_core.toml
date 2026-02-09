@@ -1,0 +1,117 @@
+[meta]
+name = "ml-core"
+version = "1.0.0"
+description = "Core ML stack compatibility rules: PyTorch, TensorFlow, JAX, NumPy, CUDA"
+
+# ---------------------------------------------------------------------------
+# CUDA / Driver mismatch rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "torch-2.4-needs-cuda-12.1"
+severity = "error"
+category = "cuda_mismatch"
+description = "PyTorch {torch_version} requires CUDA >= 12.1, but your system has CUDA {cuda_version}"
+fix = "Install PyTorch for your CUDA version: pip install torch --index-url https://download.pytorch.org/whl/cu118"
+
+[rules.when]
+package_version = {torch = ">=2.4"}
+gpu_vendor = "nvidia"
+cuda_version = "<12.1"
+
+[[rules]]
+id = "torch-2.1-needs-cuda-11.8"
+severity = "error"
+category = "cuda_mismatch"
+description = "PyTorch {torch_version} requires CUDA >= 11.8, but your system has CUDA {cuda_version}"
+fix = "Upgrade your NVIDIA driver, or install an older PyTorch: pip install 'torch<2.1'"
+
+[rules.when]
+package_version = {torch = ">=2.1,<2.4"}
+gpu_vendor = "nvidia"
+cuda_version = "<11.8"
+
+[[rules]]
+id = "tensorflow-2.16-needs-cuda-12.3"
+severity = "error"
+category = "cuda_mismatch"
+description = "TensorFlow {tensorflow_version} requires CUDA >= 12.3, but your system has CUDA {cuda_version}"
+fix = "Install compatible CUDA toolkit or use: pip install 'tensorflow<2.16'"
+
+[rules.when]
+package_version = {tensorflow = ">=2.16"}
+gpu_vendor = "nvidia"
+cuda_version = "<12.3"
+
+# ---------------------------------------------------------------------------
+# NumPy ABI break rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "numpy2-pandas-abi"
+severity = "error"
+category = "numpy_abi"
+description = "numpy {numpy_version} has ABI changes that break pandas {pandas_version} (< 2.1)"
+fix = "Upgrade pandas: pip install 'pandas>=2.1'"
+
+[rules.when]
+package_version = {numpy = ">=2.0", pandas = "<2.1"}
+
+[[rules]]
+id = "numpy2-sklearn-abi"
+severity = "error"
+category = "numpy_abi"
+description = "numpy {numpy_version} has ABI changes that may break scikit-learn {scikit_learn_version} (< 1.4)"
+fix = "Upgrade scikit-learn: pip install 'scikit-learn>=1.4'"
+
+[rules.when]
+package_version = {numpy = ">=2.0", scikit-learn = "<1.4"}
+
+[[rules]]
+id = "numpy2-scipy-abi"
+severity = "error"
+category = "numpy_abi"
+description = "numpy {numpy_version} has ABI changes that may break scipy {scipy_version} (< 1.12)"
+fix = "Upgrade scipy: pip install 'scipy>=1.12'"
+
+[rules.when]
+package_version = {numpy = ">=2.0", scipy = "<1.12"}
+
+# ---------------------------------------------------------------------------
+# PyTorch / TensorFlow co-installation
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "torch-tf-coinstall"
+severity = "warning"
+category = "coinstall_conflict"
+description = "PyTorch ({torch_version}) and TensorFlow ({tensorflow_version}) are both installed — they may conflict on CUDA runtime libraries"
+fix = "Use separate virtual environments for PyTorch and TensorFlow workloads"
+
+[rules.when]
+package_version = {torch = ">=1.0", tensorflow = ">=2.0"}
+
+# ---------------------------------------------------------------------------
+# Deprecation notices
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "sklearn-joblib-removed"
+severity = "info"
+category = "deprecation"
+description = "sklearn.externals.joblib was removed in scikit-learn {scikit_learn_version} — use 'import joblib' directly"
+fix = "Replace 'from sklearn.externals import joblib' with 'import joblib', and add joblib to your dependencies"
+
+[rules.when]
+package_version = {scikit-learn = ">=1.3"}
+
+[[rules]]
+id = "pandas-append-removed"
+severity = "info"
+category = "deprecation"
+description = "DataFrame.append() was removed in pandas {pandas_version} — use pd.concat() instead"
+fix = "Replace df.append(other) with pd.concat([df, other])"
+
+[rules.when]
+package_version = {pandas = ">=2.0"}
+
