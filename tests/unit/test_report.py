@@ -82,9 +82,7 @@ def error_issue() -> CompatIssue:
     return CompatIssue(
         severity=Severity.ERROR,
         category="cuda-mismatch",
-        description=(
-            "torch 2.1.0 requires CUDA 11.8 but CUDA 12.3 detected"
-        ),
+        description=("torch 2.1.0 requires CUDA 11.8 but CUDA 12.3 detected"),
         affected_packages=["torch"],
         fix_suggestion="pip install torch==2.1.0+cu121",
     )
@@ -106,9 +104,7 @@ def info_issue() -> CompatIssue:
     return CompatIssue(
         severity=Severity.INFO,
         category="deprecation",
-        description=(
-            "numpy 1.26.x will drop Python 3.9 support soon"
-        ),
+        description=("numpy 1.26.x will drop Python 3.9 support soon"),
         affected_packages=["numpy"],
         fix_suggestion=None,
     )
@@ -156,14 +152,9 @@ class TestFormatReportJson:
         restored = DiagnosisResult.model_validate_json(output)
         assert restored.issue_count == 0
         assert restored.hardware.os_name == clean_result.hardware.os_name
-        assert (
-            restored.environment.python_version
-            == clean_result.environment.python_version
-        )
+        assert restored.environment.python_version == clean_result.environment.python_version
 
-    def test_json_roundtrip_with_issues(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_json_roundtrip_with_issues(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_json
 
         output = format_report_json(result_with_issues)
@@ -173,9 +164,7 @@ class TestFormatReportJson:
         assert restored.issues[1].severity == Severity.WARNING
         assert restored.issues[2].severity == Severity.INFO
 
-    def test_json_contains_hardware_fields(
-        self, clean_result: DiagnosisResult
-    ):
+    def test_json_contains_hardware_fields(self, clean_result: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_json
 
         output = format_report_json(clean_result)
@@ -207,48 +196,35 @@ class TestFormatReportConsole:
         output = format_report_console(clean_result)
         assert "No issues found" in output
 
-    def test_console_shows_hardware(
-        self, clean_result: DiagnosisResult
-    ):
+    def test_console_shows_hardware(self, clean_result: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(clean_result)
         assert "Linux" in output
         assert "NVIDIA RTX 4090" in output
 
-    def test_console_shows_python_version(
-        self, clean_result: DiagnosisResult
-    ):
+    def test_console_shows_python_version(self, clean_result: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(clean_result)
         assert "3.11.7" in output
 
-    def test_console_shows_error_issue(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_console_shows_error_issue(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(result_with_issues)
         assert "ERROR" in output
         assert "cuda-mismatch" in output
-        assert (
-            "torch 2.1.0 requires CUDA 11.8 but CUDA 12.3 detected"
-            in output
-        )
+        assert "torch 2.1.0 requires CUDA 11.8 but CUDA 12.3 detected" in output
 
-    def test_console_shows_warning_issue(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_console_shows_warning_issue(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(result_with_issues)
         assert "WARNING" in output
         assert "numpy-abi" in output
 
-    def test_console_shows_fix_suggestion(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_console_shows_fix_suggestion(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(result_with_issues)
@@ -271,9 +247,7 @@ class TestFormatReportConsole:
         output = format_report_console(result)
         assert "Fix:" not in output
 
-    def test_console_shows_affected_packages(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_console_shows_affected_packages(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(result_with_issues)
@@ -286,9 +260,7 @@ class TestFormatReportConsole:
         output = format_report_console(clean_result)
         assert "0.17" in output
 
-    def test_console_verdict_with_errors(
-        self, result_with_issues: DiagnosisResult
-    ):
+    def test_console_verdict_with_errors(self, result_with_issues: DiagnosisResult):
         from compatibillabuddy.engine.report import format_report_console
 
         output = format_report_console(result_with_issues)

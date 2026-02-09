@@ -35,11 +35,7 @@ def doctor(
     """
     result = diagnose()
 
-    report = (
-        format_report_json(result)
-        if format == "json"
-        else format_report_console(result)
-    )
+    report = format_report_json(result) if format == "json" else format_report_console(result)
 
     if output is not None:
         output.write_text(report, encoding="utf-8")

@@ -151,9 +151,7 @@ class TestDoctorCommand:
         """--output writes report to a file instead of stdout."""
         outfile = tmp_path / "report.txt"
         with patch(DIAGNOSE_PATH, return_value=_clean_result()):
-            result = runner.invoke(
-                app, ["doctor", "--output", str(outfile)]
-            )
+            result = runner.invoke(app, ["doctor", "--output", str(outfile)])
         assert result.exit_code == 0
         contents = outfile.read_text(encoding="utf-8")
         assert "No issues found" in contents

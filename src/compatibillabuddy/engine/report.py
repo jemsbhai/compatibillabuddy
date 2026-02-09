@@ -39,9 +39,7 @@ def format_report_console(result: DiagnosisResult) -> str:
     Sections: Hardware → Environment → Issues → Timing → Verdict.
     """
     buf = StringIO()
-    console = Console(
-        file=buf, width=100, force_terminal=False, no_color=True
-    )
+    console = Console(file=buf, width=100, force_terminal=False, no_color=True)
 
     _render_hardware(console, result)
     _render_environment(console, result)
@@ -62,12 +60,8 @@ def _render_hardware(console: Console, result: DiagnosisResult) -> None:
     ]
     for gpu in hw.gpus:
         extras = _gpu_extras(gpu)
-        hw_lines.append(
-            f"GPU:    {gpu.name} (driver {gpu.driver_version}{extras})"
-        )
-    console.print(
-        Panel("\n".join(hw_lines), title="Hardware", border_style="cyan")
-    )
+        hw_lines.append(f"GPU:    {gpu.name} (driver {gpu.driver_version}{extras})")
+    console.print(Panel("\n".join(hw_lines), title="Hardware", border_style="cyan"))
 
 
 def _gpu_extras(gpu) -> str:  # noqa: ANN001
@@ -82,16 +76,13 @@ def _gpu_extras(gpu) -> str:  # noqa: ANN001
     return ", " + ", ".join(parts) if parts else ""
 
 
-def _render_environment(
-    console: Console, result: DiagnosisResult
-) -> None:
+def _render_environment(console: Console, result: DiagnosisResult) -> None:
     """Render the environment summary panel."""
     env = result.environment
     pkg_count = len(env.packages)
     console.print(
         Panel(
-            f"Python: {env.python_version}\n"
-            f"Packages installed: {pkg_count}",
+            f"Python: {env.python_version}\nPackages installed: {pkg_count}",
             title="Environment",
             border_style="cyan",
         )
@@ -122,9 +113,7 @@ def _render_issues(console: Console, result: DiagnosisResult) -> None:
 
         table.add_row("Description", issue.description)
         if issue.affected_packages:
-            table.add_row(
-                "Packages", ", ".join(issue.affected_packages)
-            )
+            table.add_row("Packages", ", ".join(issue.affected_packages))
         if issue.fix_suggestion is not None:
             table.add_row("Fix:", issue.fix_suggestion)
 
@@ -148,37 +137,23 @@ def _render_timing(console: Console, result: DiagnosisResult) -> None:
 
 def _render_verdict(console: Console, result: DiagnosisResult) -> None:
     """Render the final verdict panel."""
-    errors = sum(
-        1 for i in result.issues if i.severity == Severity.ERROR
-    )
-    warnings = sum(
-        1 for i in result.issues if i.severity == Severity.WARNING
-    )
-    infos = sum(
-        1 for i in result.issues if i.severity == Severity.INFO
-    )
+    errors = sum(1 for i in result.issues if i.severity == Severity.ERROR)
+    warnings = sum(1 for i in result.issues if i.severity == Severity.WARNING)
+    infos = sum(1 for i in result.issues if i.severity == Severity.INFO)
 
     if errors:
         parts = [f"{errors} error{'s' if errors != 1 else ''}"]
         if warnings:
-            parts.append(
-                f"{warnings} warning{'s' if warnings != 1 else ''}"
-            )
+            parts.append(f"{warnings} warning{'s' if warnings != 1 else ''}")
         if infos:
             parts.append(f"{infos} info")
         verdict = "Found " + ", ".join(parts)
-        console.print(
-            Panel(verdict, title="Verdict", border_style="red")
-        )
+        console.print(Panel(verdict, title="Verdict", border_style="red"))
     elif warnings:
         parts = [f"{warnings} warning{'s' if warnings != 1 else ''}"]
         if infos:
             parts.append(f"{infos} info")
         verdict = "Found " + ", ".join(parts)
-        console.print(
-            Panel(verdict, title="Verdict", border_style="yellow")
-        )
+        console.print(Panel(verdict, title="Verdict", border_style="yellow"))
     else:
-        console.print(
-            Panel("All clear!", title="Verdict", border_style="green")
-        )
+        console.print(Panel("All clear!", title="Verdict", border_style="green"))
