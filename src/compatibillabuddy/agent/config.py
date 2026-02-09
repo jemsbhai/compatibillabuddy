@@ -52,10 +52,14 @@ class AgentConfig(BaseModel):
     Attributes:
         api_key: Gemini API key.
         model: Model identifier string. Must be in SUPPORTED_MODELS.
+        max_api_retries: Max retry attempts on transient API errors.
+        base_retry_delay: Initial delay in seconds for exponential backoff.
     """
 
     api_key: str
     model: str = DEFAULT_MODEL
+    max_api_retries: int = 5
+    base_retry_delay: float = 1.0
 
     @field_validator("model")
     @classmethod

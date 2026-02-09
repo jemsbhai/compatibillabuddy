@@ -7,6 +7,7 @@ conversation loop with automatic tool dispatch.
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -21,6 +22,9 @@ from compatibillabuddy.agent.config import AgentConfig
 
 # Maximum tool-call round-trips per chat()/auto_repair() call
 _MAX_TOOL_ROUNDS = 25
+
+# HTTP status codes that should trigger a retry
+_RETRYABLE_CODES: frozenset[int] = frozenset({429, 500, 502, 503})
 
 _SYSTEM_PROMPT = """\
 You are Compatibillabuddy, a hardware-aware Python dependency diagnostic and repair agent.
@@ -166,6 +170,49 @@ class AgentSession:
         if self._on_event is not None:
             self._on_event(event)
 
+    def _send_with_retry(self, message: str) -> Any:
+        """Send a message with exponential backoff on transient errors.
+
+        Retries on 429 (rate limit), 500, 502, 503 errors.
+        Non-transient errors (e.g. 400) raise immediately.
+
+        Args:
+            message: The message text to send.
+
+        Returns:
+            The Gemini API response.
+
+        Raises:
+            Exception: After exhausting retries, or on non-transient errors.
+        """
+        last_error: Exception | None = None
+        max_attempts = 1 + self.config.max_api_retries
+
+        for attempt in range(max_attempts):
+            try:
+                return self._chat.send_message(message)
+            except Exception as e:
+                error_code = getattr(e, "code", None)
+                if error_code not in _RETRYABLE_CODES:
+                    raise
+
+                last_error = e
+
+                if attempt < self.config.max_api_retries:
+                    delay = self.config.base_retry_delay * (2**attempt)
+                    self._emit_event(
+                        {
+                            "type": "retry",
+                            "attempt": attempt + 1,
+                            "max_retries": self.config.max_api_retries,
+                            "delay": delay,
+                            "error": str(e),
+                        }
+                    )
+                    time.sleep(delay)
+
+        raise last_error  # type: ignore[misc]
+
     def chat(self, user_message: str) -> str:
         """Send a message and handle the tool-call loop.
 
@@ -175,7 +222,7 @@ class AgentSession:
         Returns:
             The agent's final text response after all tool calls are resolved.
         """
-        response = self._chat.send_message(user_message)
+        response = self._send_with_retry(user_message)
 
         for _ in range(_MAX_TOOL_ROUNDS):
             part = response.candidates[0].content.parts[0]
@@ -197,7 +244,7 @@ class AgentSession:
                 }
             )
 
-            response = self._chat.send_message(json.dumps(tool_result, default=str))
+            response = self._send_with_retry(json.dumps(tool_result, default=str))
 
         part = response.candidates[0].content.parts[0]
         return part.text or "(Agent reached maximum tool call rounds)"
@@ -238,7 +285,7 @@ class AgentSession:
             dry_run_instruction=dry_run_instruction,
         )
 
-        response = self._chat.send_message(prompt)
+        response = self._send_with_retry(prompt)
 
         for _ in range(_MAX_TOOL_ROUNDS):
             part = response.candidates[0].content.parts[0]
@@ -270,7 +317,7 @@ class AgentSession:
                 }
             )
 
-            response = self._chat.send_message(json.dumps(tool_result, default=str))
+            response = self._send_with_retry(json.dumps(tool_result, default=str))
 
         # Exhausted max rounds
         part = response.candidates[0].content.parts[0]
