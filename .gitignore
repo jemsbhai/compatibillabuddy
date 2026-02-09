@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.mypy_cache/
+.dmypy.json
+
+# Research docs (internal reference, not for distribution)
+docs/research/

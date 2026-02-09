@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "compatibillabuddy"
+version = "0.1.0"
+description = "Hardware-aware dependency compatibility framework for Python ML stacks"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+  { name = "Muntaser Syed", email = "muntaser@ieee.org" },
+]
+maintainers = [
+  { name = "Muntaser Syed", email = "jemsbhai@gmail.com" },
+]
+keywords = [
+  "dependencies",
+  "compatibility",
+  "machine-learning",
+  "cuda",
+  "packaging",
+  "gpu",
+  "pytorch",
+  "tensorflow",
+  "jax",
+  "nvidia",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: System :: Systems Administration",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "typer>=0.9",
+  "rich>=13.0",
+  "packaging>=24.0",
+]
+
+[project.optional-dependencies]
+agent = ["google-genai>=1.0"]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.8",
+]
+all = ["compatibillabuddy[agent,dev]"]
+
+[project.scripts]
+compatibuddy = "compatibillabuddy.cli:app"
+compatibillabuddy = "compatibillabuddy.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/jemsbhai/compatibillabuddy"
+Repository = "https://github.com/jemsbhai/compatibillabuddy"
+Issues = "https://github.com/jemsbhai/compatibillabuddy/issues"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/compatibillabuddy"]
