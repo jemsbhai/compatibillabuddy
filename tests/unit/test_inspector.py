@@ -85,8 +85,7 @@ def pip_inspect_output_ml_stack():
                         ],
                     },
                     "metadata_location": (
-                        "/home/user/.venv/lib/python3.12/"
-                        "site-packages/torch-2.4.0.dist-info"
+                        "/home/user/.venv/lib/python3.12/site-packages/torch-2.4.0.dist-info"
                     ),
                     "installer": "pip",
                     "requested": True,
@@ -98,8 +97,7 @@ def pip_inspect_output_ml_stack():
                         "version": "2.0.0",
                     },
                     "metadata_location": (
-                        "/home/user/.venv/lib/python3.12/"
-                        "site-packages/numpy-2.0.0.dist-info"
+                        "/home/user/.venv/lib/python3.12/site-packages/numpy-2.0.0.dist-info"
                     ),
                     "installer": "pip",
                     "requested": True,
@@ -117,8 +115,7 @@ def pip_inspect_output_ml_stack():
                         ],
                     },
                     "metadata_location": (
-                        "/home/user/.venv/lib/python3.12/"
-                        "site-packages/scikit_learn-1.4.0.dist-info"
+                        "/home/user/.venv/lib/python3.12/site-packages/scikit_learn-1.4.0.dist-info"
                     ),
                     "installer": "pip",
                     "requested": True,
