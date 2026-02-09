@@ -76,7 +76,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not integration'"
 markers = [
   "integration: runs against real system (may need GPU, network, etc.)",
 ]
