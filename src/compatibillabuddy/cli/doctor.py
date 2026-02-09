@@ -4,9 +4,8 @@ Calls diagnose() and formats the result for console or JSON output.
 Designed for both human use and agent interop (--format json).
 """
 
-from __future__ import annotations
-
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -21,7 +20,7 @@ def doctor(
         "-f",
         help="Output format: 'console' (human-readable) or 'json' (machine-readable).",
     ),
-    output: Path | None = typer.Option(  # noqa: B008
+    output: Optional[Path] = typer.Option(  # noqa: B008, UP045
         None,
         "--output",
         "-o",
