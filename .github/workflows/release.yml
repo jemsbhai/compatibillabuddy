@@ -51,7 +51,9 @@ jobs:
           path: dist/
 
       - name: Install from wheel
-        run: pip install dist/*.whl[dev]
+        run: |
+          WHEEL=$(ls dist/*.whl)
+          pip install "${WHEEL}[dev]"
 
       - name: Run tests against built package
         run: pytest
