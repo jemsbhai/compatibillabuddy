@@ -76,14 +76,14 @@ class TestAgentSessionInit:
         with patch("compatibillabuddy.agent.core.genai"):
             session = AgentSession(config)
         tool_names = set(session.tool_map.keys())
-        expected = {
+        diagnostic_tools = {
             "tool_probe_hardware",
             "tool_inspect_environment",
             "tool_run_doctor",
             "tool_explain_issue",
             "tool_search_rules",
         }
-        assert expected == tool_names
+        assert diagnostic_tools.issubset(tool_names)
 
 
 class TestAgentSessionChat:
@@ -199,6 +199,227 @@ class TestAgentToolDispatch:
         assert session.tool_map["tool_run_doctor"] is tools.tool_run_doctor
         assert session.tool_map["tool_explain_issue"] is tools.tool_explain_issue
         assert session.tool_map["tool_search_rules"] is tools.tool_search_rules
+
+
+class TestRepairToolsRegistered:
+    """Tests that repair tools are registered in the agent session."""
+
+    def test_repair_tools_in_tool_map(self):
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        with patch("compatibillabuddy.agent.core.genai"):
+            session = AgentSession(config)
+
+        repair_tools = {
+            "tool_snapshot_environment",
+            "tool_run_pip",
+            "tool_verify_fix",
+            "tool_rollback",
+        }
+        assert repair_tools.issubset(set(session.tool_map.keys()))
+
+    def test_all_nine_tools_registered(self):
+        """5 diagnostic + 4 repair = 9 total tools."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        with patch("compatibillabuddy.agent.core.genai"):
+            session = AgentSession(config)
+
+        assert len(session.tool_map) == 9
+
+    def test_dispatch_repair_tools(self):
+        """_dispatch_tool works for all 4 repair tools."""
+        from compatibillabuddy.agent import tools
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        with patch("compatibillabuddy.agent.core.genai"):
+            session = AgentSession(config)
+
+        assert session.tool_map["tool_snapshot_environment"] is tools.tool_snapshot_environment
+        assert session.tool_map["tool_run_pip"] is tools.tool_run_pip
+        assert session.tool_map["tool_verify_fix"] is tools.tool_verify_fix
+        assert session.tool_map["tool_rollback"] is tools.tool_rollback
+
+
+class TestAutoRepair:
+    """Tests for AgentSession.auto_repair() method."""
+
+    def test_auto_repair_returns_repair_result(self):
+        """auto_repair() returns a RepairResult dataclass."""
+        from compatibillabuddy.agent.core import AgentSession, RepairResult
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = _mock_text_response(
+            "No issues found. Environment is healthy."
+        )
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            result = session.auto_repair(dry_run=True)
+
+        assert isinstance(result, RepairResult)
+        assert isinstance(result.summary, str)
+        assert isinstance(result.repair_log, list)
+
+    def test_auto_repair_dry_run_in_prompt(self):
+        """dry_run=True is communicated in the prompt sent to Gemini."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = _mock_text_response("Dry run complete.")
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            session.auto_repair(dry_run=True)
+
+        sent_prompt = mock_chat.send_message.call_args[0][0]
+        assert "dry_run" in sent_prompt.lower() or "dry run" in sent_prompt.lower()
+
+    def test_auto_repair_live_mode_in_prompt(self):
+        """dry_run=False instructs Gemini to execute for real."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = _mock_text_response("Repairs complete.")
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            session.auto_repair(dry_run=False)
+
+        sent_prompt = mock_chat.send_message.call_args[0][0]
+        assert "dry_run=false" in sent_prompt.lower() or "execute" in sent_prompt.lower()
+
+    def test_auto_repair_with_tool_calls(self):
+        """auto_repair handles the tool-call loop and logs actions."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+
+        # Simulate: snapshot → doctor → text reply
+        mock_chat.send_message.side_effect = [
+            _mock_tool_call_response("tool_snapshot_environment", {}),
+            _mock_tool_call_response("tool_run_doctor", {}),
+            _mock_text_response("Found 1 issue. Environment needs torch upgrade."),
+        ]
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            session.tool_map["tool_snapshot_environment"] = MagicMock(
+                return_value={"timestamp": "2025-01-15T00:00:00", "packages": ["torch==2.1.0"]}
+            )
+            session.tool_map["tool_run_doctor"] = MagicMock(
+                return_value={"issues": [{"severity": 1, "description": "CUDA mismatch"}]}
+            )
+            result = session.auto_repair(dry_run=True)
+
+        assert len(result.repair_log) == 2  # snapshot + doctor
+        assert result.repair_log[0]["tool"] == "tool_snapshot_environment"
+        assert result.repair_log[1]["tool"] == "tool_run_doctor"
+
+    def test_auto_repair_max_retries_respected(self):
+        """auto_repair accepts a max_retries parameter."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = _mock_text_response("Done.")
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            result = session.auto_repair(dry_run=True, max_retries=5)
+
+        # Should complete without error — max_retries is accepted
+        assert isinstance(result.summary, str)
+
+
+class TestEventCallback:
+    """Tests for the on_event callback system."""
+
+    def test_on_event_receives_tool_calls(self):
+        """Callback is called for each tool dispatch during chat."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+
+        mock_chat.send_message.side_effect = [
+            _mock_tool_call_response("tool_probe_hardware", {}),
+            _mock_text_response("Done."),
+        ]
+
+        events = []
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config, on_event=lambda e: events.append(e))
+            session._chat = mock_chat
+            session.tool_map["tool_probe_hardware"] = MagicMock(
+                return_value={"os_name": "Linux", "gpus": []}
+            )
+            session.chat("Check my hardware")
+
+        assert len(events) >= 1
+        assert events[0]["type"] == "tool_call"
+        assert events[0]["tool"] == "tool_probe_hardware"
+
+    def test_on_event_optional(self):
+        """Session works fine without a callback."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = _mock_text_response("Hello!")
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config)
+            session._chat = mock_chat
+            result = session.chat("Hi")
+
+        assert result == "Hello!"
+
+    def test_auto_repair_fires_events(self):
+        """auto_repair() fires events through the callback."""
+        from compatibillabuddy.agent.core import AgentSession
+
+        config = _make_config()
+        mock_genai = MagicMock()
+        mock_chat = MagicMock()
+
+        mock_chat.send_message.side_effect = [
+            _mock_tool_call_response("tool_snapshot_environment", {}),
+            _mock_text_response("Environment healthy."),
+        ]
+
+        events = []
+
+        with patch("compatibillabuddy.agent.core.genai", mock_genai):
+            session = AgentSession(config, on_event=lambda e: events.append(e))
+            session._chat = mock_chat
+            session.tool_map["tool_snapshot_environment"] = MagicMock(
+                return_value={"timestamp": "2025-01-15T00:00:00", "packages": []}
+            )
+            session.auto_repair(dry_run=True)
+
+        tool_events = [e for e in events if e["type"] == "tool_call"]
+        assert len(tool_events) >= 1
 
 
 class TestMissingGenai:
