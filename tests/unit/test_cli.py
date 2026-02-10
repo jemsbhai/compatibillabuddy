@@ -18,11 +18,11 @@ def test_cli_version_flag():
     """The --version flag should print the current version."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "0.2.0" in result.stdout
+    assert "0.2.1" in result.stdout
 
 
 def test_cli_version_short_flag():
     """The -V flag should also print the current version."""
     result = runner.invoke(app, ["-V"])
     assert result.exit_code == 0
-    assert "0.2.0" in result.stdout
+    assert "0.2.1" in result.stdout
