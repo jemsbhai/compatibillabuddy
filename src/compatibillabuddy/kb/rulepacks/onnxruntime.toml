@@ -1,0 +1,56 @@
+[meta]
+name = "onnxruntime"
+version = "1.0.0"
+description = "ONNX Runtime compatibility rules: CUDA requirements, CPU/GPU co-install conflicts"
+
+# Sources:
+# - ONNX Runtime CUDA EP docs:
+#   https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html
+# - ONNX Runtime release notes:
+#   https://github.com/microsoft/onnxruntime/releases
+
+# ---------------------------------------------------------------------------
+# CUDA mismatch rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "ort-gpu-1.19-needs-cuda-12"
+severity = "error"
+category = "cuda_mismatch"
+description = "onnxruntime-gpu {onnxruntime-gpu_version} requires CUDA 12.x, but your system has CUDA {cuda_version}. Starting with version 1.19, ONNX Runtime GPU packages on PyPI default to CUDA 12."
+fix = "Upgrade your CUDA toolkit to 12.x, or install the CUDA 11 build from the ORT package index: pip install onnxruntime-gpu --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-11/pypi/simple/"
+
+[rules.when]
+package_version = {"onnxruntime-gpu" = ">=1.19"}
+gpu_vendor = "nvidia"
+cuda_version = "<12.0"
+
+# ---------------------------------------------------------------------------
+# cuDNN mismatch rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "ort-gpu-1.19-needs-cudnn-9"
+severity = "error"
+category = "cudnn_mismatch"
+description = "onnxruntime-gpu {onnxruntime_gpu_version} (default PyPI package) requires cuDNN 9.x, but your system has cuDNN {cudnn_version}. cuDNN 8.x and 9.x are mutually incompatible."
+fix = "Upgrade cuDNN to 9.x, or install the cuDNN 8 build from the ORT package index: pip install onnxruntime-gpu --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
+
+[rules.when]
+package_version = {"onnxruntime-gpu" = ">=1.19"}
+gpu_vendor = "nvidia"
+cudnn_version = "<9.0"
+
+# ---------------------------------------------------------------------------
+# Co-installation conflicts
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "ort-cpu-gpu-coinstall"
+severity = "error"
+category = "coinstall_conflict"
+description = "Both onnxruntime ({onnxruntime_version}) and onnxruntime-gpu ({onnxruntime-gpu_version}) are installed. They provide the same Python module and will conflict at import time."
+fix = "Uninstall one: pip uninstall onnxruntime (if using GPU) or pip uninstall onnxruntime-gpu (if using CPU only)"
+
+[rules.when]
+package_version = {onnxruntime = ">=0.1", "onnxruntime-gpu" = ">=0.1"}
