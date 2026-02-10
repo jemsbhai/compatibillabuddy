@@ -38,6 +38,7 @@ class RuleCondition(BaseModel):
     package_version: dict[str, str] = Field(default_factory=dict)
     gpu_vendor: str | None = None
     cuda_version: str | None = None
+    cudnn_version: str | None = None
 
 
 class Rule(BaseModel):
@@ -92,6 +93,7 @@ def load_rules_from_toml(toml_string: str) -> list[Rule]:
             package_version=when_data.get("package_version", {}),
             gpu_vendor=when_data.get("gpu_vendor"),
             cuda_version=when_data.get("cuda_version"),
+            cudnn_version=when_data.get("cudnn_version"),
         )
 
         rules.append(
@@ -213,6 +215,14 @@ def _rule_matches(
         if not _version_matches(cuda_ver, cond.cuda_version):
             return False
 
+    # Check: cuDNN version constraint
+    if cond.cudnn_version is not None:
+        cudnn_ver = _get_system_cudnn_version(hardware)
+        if cudnn_ver is None:
+            return False
+        if not _version_matches(cudnn_ver, cond.cudnn_version):
+            return False
+
     return True
 
 
@@ -269,6 +279,17 @@ def _get_system_cuda_version(hardware: HardwareProfile) -> str | None:
     return None
 
 
+def _get_system_cudnn_version(hardware: HardwareProfile) -> str | None:
+    """Extract the cuDNN version from the hardware profile.
+
+    Returns the cuDNN version from the first NVIDIA GPU, or None.
+    """
+    for gpu in hardware.gpus:
+        if gpu.vendor == GpuVendor.NVIDIA and gpu.cudnn_version is not None:
+            return gpu.cudnn_version
+    return None
+
+
 def _build_template_vars(
     rule: Rule,
     env: EnvironmentInventory,
@@ -291,6 +312,10 @@ def _build_template_vars(
     cuda_ver = _get_system_cuda_version(hardware)
     if cuda_ver is not None:
         variables["cuda_version"] = cuda_ver
+
+    cudnn_ver = _get_system_cudnn_version(hardware)
+    if cudnn_ver is not None:
+        variables["cudnn_version"] = cudnn_ver
 
     if hardware.gpus:
         variables["gpu_name"] = hardware.gpus[0].name

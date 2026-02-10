@@ -126,6 +126,48 @@ class TestHardwareProfile:
         restored = HardwareProfile.model_validate_json(json_str)
         assert restored == original
 
+    def test_gpu_cudnn_version_stored(self):
+        """GpuInfo should accept and store a cudnn_version field."""
+        from compatibillabuddy.engine.models import GpuInfo
+
+        gpu = GpuInfo(
+            vendor="nvidia",
+            name="RTX 4090",
+            driver_version="560.94",
+            cuda_version="12.6",
+            cudnn_version="9.3.0",
+            vram_mb=24564,
+        )
+        assert gpu.cudnn_version == "9.3.0"
+
+    def test_gpu_cudnn_version_defaults_to_none(self):
+        """GpuInfo should default cudnn_version to None when not provided."""
+        from compatibillabuddy.engine.models import GpuInfo
+
+        gpu = GpuInfo(
+            vendor="nvidia",
+            name="RTX 4090",
+            driver_version="560.94",
+        )
+        assert gpu.cudnn_version is None
+
+    def test_gpu_cudnn_version_serialization_roundtrip(self):
+        """cudnn_version should survive JSON serialization roundtrip."""
+        from compatibillabuddy.engine.models import GpuInfo
+
+        original = GpuInfo(
+            vendor="nvidia",
+            name="A100",
+            driver_version="535.129",
+            cuda_version="12.2",
+            cudnn_version="8.9.7",
+            vram_mb=81920,
+        )
+        json_str = original.model_dump_json()
+        restored = GpuInfo.model_validate_json(json_str)
+        assert restored.cudnn_version == "8.9.7"
+        assert restored == original
+
     def test_gpu_vendor_must_be_valid(self):
         """GPU vendor must be one of the known vendors."""
         from compatibillabuddy.engine.models import GpuInfo

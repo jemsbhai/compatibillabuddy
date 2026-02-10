@@ -1132,3 +1132,121 @@ class TestBundledMlCoreRules:
         issues = self._eval(env_pandas1, hw_cpu_only)
         dep = [i for i in issues if i.category == "deprecation" and "pandas" in i.affected_packages]
         assert len(dep) == 0
+
+
+# ===========================================================================
+# cuDNN version condition tests
+# ===========================================================================
+
+
+class TestCudnnVersionCondition:
+    """Test that the rule engine supports cudnn_version as a condition."""
+
+    CUDNN_RULE_TOML = textwrap.dedent("""\
+        [meta]
+        name = "test-cudnn"
+        version = "1.0.0"
+        description = "Test cuDNN rules"
+
+        [[rules]]
+        id = "needs-cudnn-9"
+        severity = "error"
+        category = "cudnn_mismatch"
+        description = "Package requires cuDNN >= 9.0, but found cuDNN {cudnn_version}"
+        fix = "Upgrade cuDNN to 9.x"
+
+        [rules.when]
+        package_version = {"onnxruntime-gpu" = ">=1.20"}
+        gpu_vendor = "nvidia"
+        cudnn_version = "<9.0"
+    """)
+
+    def _hw_with_cudnn(self, cuda: str, cudnn: str | None) -> HardwareProfile:
+        return HardwareProfile(
+            os_name="Linux",
+            os_version="6.5.0",
+            cpu_arch="x86_64",
+            cpu_name="Intel Xeon",
+            python_version="3.12.0",
+            gpus=[
+                GpuInfo(
+                    vendor=GpuVendor.NVIDIA,
+                    name="A100",
+                    driver_version="550.54",
+                    cuda_version=cuda,
+                    cudnn_version=cudnn,
+                    vram_mb=81920,
+                )
+            ],
+        )
+
+    def _env_ort(self, version: str) -> EnvironmentInventory:
+        return EnvironmentInventory(
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
+            packages=[
+                InstalledPackage(name="onnxruntime-gpu", version=version),
+            ],
+        )
+
+    def test_fires_when_cudnn_too_old(self):
+        """cuDNN 8.9.7 with rule requiring >=9.0 → should fire."""
+        from compatibillabuddy.kb.engine import evaluate_rules, load_rules_from_toml
+
+        rules = load_rules_from_toml(self.CUDNN_RULE_TOML)
+        hw = self._hw_with_cudnn(cuda="12.4", cudnn="8.9.7")
+        env = self._env_ort("1.20.0")
+        issues = evaluate_rules(rules, env, hw)
+
+        assert len(issues) == 1
+        assert issues[0].severity == Severity.ERROR
+        assert issues[0].category == "cudnn_mismatch"
+
+    def test_does_not_fire_when_cudnn_sufficient(self):
+        """cuDNN 9.3.0 with rule requiring >=9.0 → should NOT fire."""
+        from compatibillabuddy.kb.engine import evaluate_rules, load_rules_from_toml
+
+        rules = load_rules_from_toml(self.CUDNN_RULE_TOML)
+        hw = self._hw_with_cudnn(cuda="12.4", cudnn="9.3.0")
+        env = self._env_ort("1.20.0")
+        issues = evaluate_rules(rules, env, hw)
+
+        assert len(issues) == 0
+
+    def test_does_not_fire_when_cudnn_not_detected(self):
+        """cuDNN=None (not detected) → rule should NOT fire (can't confirm mismatch)."""
+        from compatibillabuddy.kb.engine import evaluate_rules, load_rules_from_toml
+
+        rules = load_rules_from_toml(self.CUDNN_RULE_TOML)
+        hw = self._hw_with_cudnn(cuda="12.4", cudnn=None)
+        env = self._env_ort("1.20.0")
+        issues = evaluate_rules(rules, env, hw)
+
+        assert len(issues) == 0
+
+    def test_does_not_fire_when_package_missing(self):
+        """Package not installed → should NOT fire."""
+        from compatibillabuddy.kb.engine import evaluate_rules, load_rules_from_toml
+
+        rules = load_rules_from_toml(self.CUDNN_RULE_TOML)
+        hw = self._hw_with_cudnn(cuda="12.4", cudnn="8.9.7")
+        env = EnvironmentInventory(
+            python_version="3.12.0",
+            python_executable="/usr/bin/python3",
+            packages=[InstalledPackage(name="numpy", version="1.26.0")],
+        )
+        issues = evaluate_rules(rules, env, hw)
+
+        assert len(issues) == 0
+
+    def test_cudnn_version_in_template(self):
+        """cuDNN version should be available as {cudnn_version} in description."""
+        from compatibillabuddy.kb.engine import evaluate_rules, load_rules_from_toml
+
+        rules = load_rules_from_toml(self.CUDNN_RULE_TOML)
+        hw = self._hw_with_cudnn(cuda="12.4", cudnn="8.9.7")
+        env = self._env_ort("1.20.0")
+        issues = evaluate_rules(rules, env, hw)
+
+        assert len(issues) == 1
+        assert "8.9.7" in issues[0].description

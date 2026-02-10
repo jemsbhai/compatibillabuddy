@@ -49,6 +49,7 @@ class GpuInfo(BaseModel):
 
     # NVIDIA-specific
     cuda_version: str | None = None
+    cudnn_version: str | None = None
     compute_capability: str | None = None
 
     # AMD-specific
