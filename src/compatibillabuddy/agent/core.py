@@ -1,7 +1,7 @@
 """Agent core — Gemini-powered diagnostic session with tool calling.
 
 Manages the Gemini client, tool registration, and the multi-turn
-conversation loop with automatic tool dispatch.
+conversation loop with manual tool dispatch.
 """
 
 from __future__ import annotations
@@ -51,6 +51,8 @@ environments — CUDA mismatches, NumPy ABI breaks, driver conflicts, and more.
 - When repairing: ALWAYS snapshot first, then diagnose, then fix one issue at a time,
   then verify. If verification shows new problems, rollback and try an alternative.
 - Explain what you are doing at each step.
+- ALWAYS use tool calls to execute actions. Never just describe what you would do.
+- After diagnosing, IMMEDIATELY call tool_run_pip to fix issues. Do not stop to explain.
 """
 
 _AUTO_REPAIR_PROMPT_TEMPLATE = """\
@@ -61,17 +63,14 @@ compatibility issues in this Python environment.
 1. Call tool_snapshot_environment() to save a rollback point.
 2. Call tool_run_doctor() to get the full diagnosis.
 3. If there are no issues, report success and stop.
-4. Analyze the issues and plan a fix order (fix the most critical/blocking issues first).
-5. For each issue:
-   a. Call tool_run_pip(action=..., package=..., dry_run={dry_run}) to apply the fix.
-   b. Call tool_verify_fix(previous_diagnosis_json=...) to check improvement.
-   c. If improved, continue to the next issue.
-   d. If new issues appeared, call tool_rollback(snapshot_json=...) and try an alternative.
-6. After all fixes, provide a final summary with:
-   - What was found
-   - What was {action_past} (or would be fixed in dry-run mode)
-   - What still needs attention
-   - The full changelog of actions taken
+4. For each issue, IMMEDIATELY call tool_run_pip() to fix it. Do not stop to explain \
+your plan — just execute the fix.
+5. After each fix, call tool_verify_fix() to check improvement.
+6. If verification shows new problems, call tool_rollback() and try an alternative.
+7. After ALL fixes are attempted, provide a final summary.
+
+## Critical: Do NOT stop after diagnosis to explain your plan. \
+IMMEDIATELY start calling tool_run_pip for each fix.
 
 ## Settings
 - dry_run={dry_run} — {dry_run_instruction}
@@ -175,27 +174,38 @@ class AgentSession:
             self._on_event(event)
 
     @staticmethod
-    def _extract_part(response: Any) -> Any | None:
-        """Safely extract the first part from a Gemini response.
+    def _extract_parts(response: Any) -> list[Any]:
+        """Safely extract all parts from a Gemini response.
 
-        Returns None if the response has no candidates, no content,
-        or no parts (e.g. MALFORMED_FUNCTION_CALL).
+        Returns an empty list if the response has no candidates,
+        no content, or no parts (e.g. MALFORMED_FUNCTION_CALL).
         """
         if not response.candidates:
-            return None
+            return []
         content = response.candidates[0].content
-        if content is None or content.parts is None or len(content.parts) == 0:
-            return None
-        return content.parts[0]
+        if content is None or content.parts is None:
+            return []
+        return list(content.parts)
 
-    def _send_with_retry(self, message: str) -> Any:
+    @staticmethod
+    def _get_function_calls(parts: list[Any]) -> list[Any]:
+        """Extract all function_call parts from a list of parts."""
+        return [p for p in parts if p.function_call is not None]
+
+    @staticmethod
+    def _get_text(parts: list[Any]) -> str:
+        """Concatenate all text parts from a list of parts."""
+        texts = [p.text for p in parts if p.text]
+        return "\n".join(texts)
+
+    def _send_with_retry(self, message: Any) -> Any:
         """Send a message with exponential backoff on transient errors.
 
         Retries on 429 (rate limit), 500, 502, 503 errors.
         Non-transient errors (e.g. 400) raise immediately.
 
         Args:
-            message: The message text to send.
+            message: The message to send (str or list of Parts).
 
         Returns:
             The Gemini API response.
@@ -231,6 +241,51 @@ class AgentSession:
 
         raise last_error  # type: ignore[misc]
 
+    def _dispatch_and_respond(
+        self,
+        function_calls: list[Any],
+        repair_log: list[dict[str, Any]] | None = None,
+    ) -> Any:
+        """Dispatch all function calls and send results back to Gemini.
+
+        Handles multiple parallel function calls in a single response.
+        Sends all results back as proper FunctionResponse parts.
+
+        Args:
+            function_calls: List of parts with function_call set.
+            repair_log: Optional log to append tool entries to.
+
+        Returns:
+            The next Gemini API response.
+        """
+        response_parts = []
+
+        for part in function_calls:
+            fc = part.function_call
+            args = dict(fc.args) if fc.args else {}
+            tool_result = self._dispatch_tool(fc.name, args)
+
+            log_entry = {
+                "tool": fc.name,
+                "args": args,
+                "result": tool_result,
+            }
+
+            if repair_log is not None:
+                repair_log.append(log_entry)
+
+            self._emit_event({"type": "tool_call", **log_entry})
+
+            # Build proper FunctionResponse part
+            response_parts.append(
+                genai.types.Part.from_function_response(
+                    name=fc.name,
+                    response=json.loads(json.dumps(tool_result, default=str)),
+                )
+            )
+
+        return self._send_with_retry(response_parts)
+
     def chat(self, user_message: str) -> str:
         """Send a message and handle the tool-call loop.
 
@@ -243,33 +298,23 @@ class AgentSession:
         response = self._send_with_retry(user_message)
 
         for _ in range(_MAX_TOOL_ROUNDS):
-            part = self._extract_part(response)
-            if part is None:
+            parts = self._extract_parts(response)
+            if not parts:
                 return "(Agent received an empty or malformed response — please retry)"
 
-            if part.function_call is None:
-                return part.text or ""
+            fn_calls = self._get_function_calls(parts)
 
-            # Dispatch the tool call
-            fc = part.function_call
-            args = dict(fc.args) if fc.args else {}
-            tool_result = self._dispatch_tool(fc.name, args)
+            # No function calls — return the text response
+            if not fn_calls:
+                return self._get_text(parts) or ""
 
-            self._emit_event(
-                {
-                    "type": "tool_call",
-                    "tool": fc.name,
-                    "args": args,
-                    "result": tool_result,
-                }
-            )
+            # Dispatch all function calls and get next response
+            response = self._dispatch_and_respond(fn_calls)
 
-            response = self._send_with_retry(json.dumps(tool_result, default=str))
-
-        part = self._extract_part(response)
-        if part is None:
-            return "(Agent reached maximum tool call rounds)"
-        return part.text or "(Agent reached maximum tool call rounds)"
+        # Exhausted max rounds
+        parts = self._extract_parts(response)
+        text = self._get_text(parts) if parts else ""
+        return text or "(Agent reached maximum tool call rounds)"
 
     def auto_repair(
         self,
@@ -310,52 +355,34 @@ class AgentSession:
         response = self._send_with_retry(prompt)
 
         for _ in range(_MAX_TOOL_ROUNDS):
-            part = self._extract_part(response)
-            if part is None:
+            parts = self._extract_parts(response)
+            if not parts:
                 return RepairResult(
-                    summary="Agent received an empty or malformed response — please retry.",
+                    summary=("Agent received an empty or malformed response — please retry."),
                     repair_log=repair_log,
                     success=False,
                 )
 
-            if part.function_call is None:
-                summary = part.text or ""
+            fn_calls = self._get_function_calls(parts)
+
+            # No function calls — agent is done, return summary
+            if not fn_calls:
+                summary = self._get_text(parts) or ""
                 return RepairResult(
                     summary=summary,
                     repair_log=repair_log,
                     success=True,
                 )
 
-            # Dispatch the tool call
-            fc = part.function_call
-            args = dict(fc.args) if fc.args else {}
-            tool_result = self._dispatch_tool(fc.name, args)
-
-            log_entry = {
-                "tool": fc.name,
-                "args": args,
-                "result": tool_result,
-            }
-            repair_log.append(log_entry)
-
-            self._emit_event(
-                {
-                    "type": "tool_call",
-                    **log_entry,
-                }
-            )
-
-            response = self._send_with_retry(json.dumps(tool_result, default=str))
+            # Dispatch all function calls and get next response
+            response = self._dispatch_and_respond(fn_calls, repair_log)
 
         # Exhausted max rounds
-        part = self._extract_part(response)
-        summary = (
-            part.text
-            if part is not None and part.text
-            else "(Agent reached maximum tool call rounds)"
-        )
+        parts = self._extract_parts(response)
+        fallback = "(Agent reached maximum tool call rounds)"
+        summary = self._get_text(parts) if parts else fallback
         return RepairResult(
-            summary=summary,
+            summary=summary or fallback,
             repair_log=repair_log,
             success=False,
         )
