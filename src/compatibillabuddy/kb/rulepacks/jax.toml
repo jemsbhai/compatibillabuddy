@@ -1,0 +1,66 @@
+[meta]
+name = "jax"
+version = "1.0.0"
+description = "JAX ecosystem compatibility rules: CUDA requirements, NumPy constraints, co-install conflicts"
+
+# Sources:
+# - JAX changelog: https://docs.jax.dev/en/latest/changelog.html
+# - JAX installation: https://docs.jax.dev/en/latest/installation.html
+# - JAX versioning: https://docs.jax.dev/en/latest/jep/9419-jax-versioning.html
+
+# ---------------------------------------------------------------------------
+# CUDA / Driver mismatch rules
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "jax-0.4.31-needs-cuda-12.1"
+severity = "error"
+category = "cuda_mismatch"
+description = "JAX {jax_version} requires CUDA >= 12.1, but your system has CUDA {cuda_version}. Support for CUDA 11.8 was dropped in JAX 0.4.31."
+fix = "Upgrade your CUDA toolkit to 12.1+, or downgrade JAX: pip install 'jax<0.4.31' 'jaxlib<0.4.31'"
+
+[rules.when]
+package_version = {jax = ">=0.4.31"}
+gpu_vendor = "nvidia"
+cuda_version = "<12.1"
+
+[[rules]]
+id = "jax-old-needs-cuda-11.8"
+severity = "error"
+category = "cuda_mismatch"
+description = "JAX {jax_version} requires CUDA >= 11.8, but your system has CUDA {cuda_version}"
+fix = "Upgrade your NVIDIA driver and CUDA toolkit, or install an older JAX version"
+
+[rules.when]
+package_version = {jax = ">=0.4.1,<0.4.31"}
+gpu_vendor = "nvidia"
+cuda_version = "<11.8"
+
+# ---------------------------------------------------------------------------
+# NumPy compatibility
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "jax-numpy-too-old"
+severity = "error"
+category = "numpy_compat"
+description = "JAX {jax_version} requires NumPy >= 1.24, but you have NumPy {numpy_version}"
+fix = "Upgrade NumPy: pip install 'numpy>=1.24'"
+
+[rules.when]
+package_version = {jax = ">=0.4.31", numpy = "<1.24"}
+
+# ---------------------------------------------------------------------------
+# Co-installation conflicts
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "jax-torch-cuda-conflict"
+severity = "warning"
+category = "coinstall_conflict"
+description = "JAX ({jax_version}) and PyTorch ({torch_version}) are both installed on an NVIDIA GPU — they each ship their own CUDA runtime, which may cause library conflicts"
+fix = "Use separate virtual environments for JAX and PyTorch workloads, or ensure both use the same CUDA major version"
+
+[rules.when]
+package_version = {jax = ">=0.4.1", torch = ">=1.0"}
+gpu_vendor = "nvidia"
