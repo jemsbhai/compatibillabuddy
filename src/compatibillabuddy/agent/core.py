@@ -149,12 +149,16 @@ class AgentSession:
         # Build tool declarations for Gemini
         self._tools = self._build_tool_declarations()
 
-        # Start a chat session
+        # Start a chat session — disable automatic function calling
+        # so our manual loop handles dispatch (with progress events).
         self._chat = self._client.chats.create(
             model=config.model,
             config=genai.types.GenerateContentConfig(
                 system_instruction=_SYSTEM_PROMPT,
                 tools=self._tools,
+                automatic_function_calling=genai.types.AutomaticFunctionCallingConfig(
+                    disable=True,
+                ),
             ),
         )
 

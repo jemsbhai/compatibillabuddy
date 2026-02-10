@@ -154,7 +154,7 @@ class TestToolRunDoctor:
             result = tool_run_doctor()
         assert isinstance(result, dict)
         assert "issues" in result
-        assert "total_seconds" in result
+        assert result["timing"]["total_seconds"] > 0
 
     def test_issues_serialized(self):
         from compatibillabuddy.agent.tools import tool_run_doctor
@@ -166,7 +166,7 @@ class TestToolRunDoctor:
             result = tool_run_doctor()
         assert isinstance(result["issues"], list)
         assert len(result["issues"]) == 2
-        assert result["issues"][0]["severity"] == 1
+        assert result["issues"][0]["severity"] == "ERROR"
         assert result["issues"][0]["category"] == "cuda-mismatch"
 
 

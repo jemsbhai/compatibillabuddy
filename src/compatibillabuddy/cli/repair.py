@@ -5,12 +5,33 @@ compatibility issues. Dry-run by default for safety.
 """
 
 import json
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 
 from compatibillabuddy.agent.config import DEFAULT_MODEL, AgentConfig, resolve_api_key
 from compatibillabuddy.agent.core import AgentSession
+
+
+def _make_progress_callback(quiet: bool = False):
+    """Create an on_event callback that prints live progress."""
+
+    def _on_event(event: dict[str, Any]) -> None:
+        if quiet:
+            return
+        etype = event.get("type")
+        if etype == "tool_call":
+            tool = event.get("tool", "unknown")
+            typer.echo(f"   🔧 {tool}()", err=True)
+        elif etype == "retry":
+            attempt = event.get("attempt", "?")
+            delay = event.get("delay", "?")
+            typer.echo(
+                f"   ⏳ Rate limited — retry {attempt}, waiting {delay}s...",
+                err=True,
+            )
+
+    return _on_event
 
 
 def repair_command(
@@ -61,9 +82,10 @@ def repair_command(
         raise typer.Exit(code=1) from None
 
     dry_run = not live
+    is_json = format == "json"
 
     # Show mode banner
-    if format != "json":
+    if not is_json:
         mode = "[DRY RUN]" if dry_run else "[LIVE MODE]"
         typer.echo(f"\n🔧 Compatibillabuddy Repair {mode}")
         typer.echo(f"   Model: {model}")
@@ -71,11 +93,12 @@ def repair_command(
         typer.echo("")
 
     config = AgentConfig(api_key=key, model=model)
-    session = AgentSession(config)
+    callback = _make_progress_callback(quiet=is_json)
+    session = AgentSession(config, on_event=callback)
 
     result = session.auto_repair(dry_run=dry_run, max_retries=max_retries)
 
-    if format == "json":
+    if is_json:
         output = json.dumps(
             {
                 "summary": result.summary,
@@ -87,6 +110,7 @@ def repair_command(
         )
         typer.echo(output)
     else:
+        typer.echo("")
         typer.echo(result.summary)
 
     if not result.success:

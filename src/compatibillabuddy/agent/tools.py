@@ -42,11 +42,16 @@ def tool_probe_hardware() -> dict:
 def tool_inspect_environment() -> dict:
     """Inspect the current Python environment.
 
-    Lists all installed packages with their versions by calling pip inspect.
-    Returns a dictionary with python version and installed packages.
+    Lists all installed packages with their versions.
+    Returns python version and a compact package list (name + version only).
     """
     env = inspect_environment()
-    return env.model_dump()
+    # Return compact list — full metadata would be 100K+ tokens
+    return {
+        "python_version": env.python_version,
+        "package_count": len(env.packages),
+        "packages": [{"name": p.name, "version": p.version} for p in env.packages],
+    }
 
 
 def tool_run_doctor() -> dict:
@@ -54,9 +59,45 @@ def tool_run_doctor() -> dict:
 
     Probes hardware, inspects installed packages, evaluates compatibility
     rules, and returns all discovered issues sorted by severity.
+    Returns a slim summary (hardware + issues only, not full package list).
     """
     result = diagnose()
-    return result.model_dump()
+    # Return only what the agent needs — hardware context + issues.
+    # The full package list (hundreds of entries) would blow up the token count.
+    return {
+        "hardware": {
+            "os_name": result.hardware.os_name,
+            "os_version": result.hardware.os_version,
+            "cpu_arch": result.hardware.cpu_arch,
+            "python_version": result.hardware.python_version,
+            "gpus": [
+                {
+                    "name": g.name,
+                    "vendor": g.vendor.value,
+                    "driver_version": g.driver_version,
+                    "cuda_version": g.cuda_version,
+                    "vram_mb": g.vram_mb,
+                }
+                for g in result.hardware.gpus
+            ],
+        },
+        "package_count": len(result.environment.packages),
+        "issues": [
+            {
+                "severity": issue.severity.name,
+                "category": issue.category,
+                "description": issue.description,
+                "affected_packages": issue.affected_packages,
+                "fix_suggestion": issue.fix_suggestion,
+            }
+            for issue in result.issues
+        ],
+        "timing": {
+            "hardware_probe_seconds": result.hardware_probe_seconds,
+            "environment_inspect_seconds": result.environment_inspect_seconds,
+            "total_seconds": result.total_seconds,
+        },
+    }
 
 
 def tool_explain_issue(issue_index: int, diagnosis_json: str) -> dict:
@@ -281,7 +322,16 @@ def tool_verify_fix(previous_diagnosis_json: str) -> dict:
         "issues_resolved": resolved,
         "new_issues": new,
         "improved": current_count < previous_count,
-        "current_diagnosis": current_result.model_dump(),
+        "current_issues": [
+            {
+                "severity": issue.severity.name,
+                "category": issue.category,
+                "description": issue.description,
+                "affected_packages": issue.affected_packages,
+                "fix_suggestion": issue.fix_suggestion,
+            }
+            for issue in current_result.issues
+        ],
     }
 
 
